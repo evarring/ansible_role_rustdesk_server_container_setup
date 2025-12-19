@@ -9,7 +9,7 @@
     name: hbbs
     image: "{{ rustdesk_server_container_setup_server_image }}"
     state: started
-    privileged: true
+    privileged: false
     volumes:
       - "{{ rustdesk_server_container_setup_folder }}:/root"
     command: "hbbs -r {{ rustdesk_server_container_setup_server_ip }}:{{ rustdesk_server_container_setup_hbbr_port_relay }}"
@@ -44,7 +44,7 @@
     image: "{{ rustdesk_server_container_setup_server_image }}"
     restart_policy: always
     state: started
-    privileged: true
+    privileged: false
     ports:
       - "{{ rustdesk_server_container_setup_hbbs_port_nattype }}:21115"
       - "{{ rustdesk_server_container_setup_hbbs_port_holepunch_conn }}:21116"
@@ -64,7 +64,7 @@
     image: "{{ rustdesk_server_container_setup_server_image }}"
     restart_policy: always
     state: started
-    privileged: true
+    privileged: false
     ports:
       - "{{ rustdesk_server_container_setup_hbbr_port_relay }}:21117"
       - "{{ rustdesk_server_container_setup_hbbr_port_webclient }}:21119"

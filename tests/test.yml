@@ -5,5 +5,5 @@
   remote_user: root
 
   roles:
-    - evarring.rustdesk.rustdesk_server_container_setup
+    - rustdesk_server_container_setup
 ...
