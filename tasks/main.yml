@@ -1,0 +1,63 @@
+# SPDX-License-Identifier: MIT-0
+---
+# tasks file for ansible-role-rustdesk-server-container
+
+- name: Include tasks to install needed packages on RedHat
+  ansible.builtin.include_tasks: pkg_redhat.yml
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Make sure firewalld or ufw is installed
+  ansible.builtin.include_tasks: firewall.yml
+  when: rustdesk_server_container_setup_firewall_install is true
+
+- name: Collect systemd info to find used firewall service
+  community.general.systemd_info:
+  register: systemd_info
+
+- name: Import redhat firewall tasks
+  ansible.builtin.include_tasks: fw_redhat.yml
+  when: "'firewalld.service' in systemd_info.units and ansible_facts['os_family'] == 'RedHat'"
+
+- name: Impot debian firewall tasks
+  ansible.builtin.include_tasks: fw_debian.yml
+  when: "'ufw.service' in systemd_info.units and ansible_facts['os_family'] == 'Debian'"
+
+- name: Ensure rustdesk volume folder exists
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0744'
+    owner: "{{ ansible_user | default('root') }}"
+    group: "{{ ansible_user | default('root') }}"
+  loop:
+    - "{{ rustdesk_server_container_setup_folder }}"
+  become: true
+
+- name: Include container tasks for RedHat
+  ansible.builtin.include_tasks: podman_redhat.yml
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Include container tasks for Debian
+  ansible.builtin.include_tasks: docker_debian.yml
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Ensure the ssh keys are readable only by the user
+  ansible.builtin.file:
+    path: "{{ item }}"
+    mode: '0600'
+    owner: "{{ ansible_user | default('root') }}"
+    group: "{{ ansible_user | default('root') }}"
+  loop:
+    - "{{ rustdesk_server_container_setup_folder }}/id_ed25519"
+    - "{{ rustdesk_server_container_setup_folder }}/id_ed25519.pub"
+  become: true
+
+- name: Fetch the generated ssh public key
+  ansible.builtin.slurp:
+    src: "{{ rustdesk_server_container_setup_folder }}/id_ed25519.pub"
+  register: rustdesk_server_container_setup_public_key
+
+- name: Print the generated ssh public key
+  ansible.builtin.debug:
+    msg: "The generated ssh public key is: {{ rustdesk_server_container_setup_public_key['content'] | b64decode }}"
+...

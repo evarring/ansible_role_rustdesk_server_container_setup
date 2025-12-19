@@ -1,0 +1,28 @@
+---
+- name: Ensure pip module dependencies are installed
+  ansible.builtin.package:
+    name: "{{ item }}"
+  become: true
+  loop:
+    - python3-packaging
+
+- name: Install firewall python module on a system with pip as package handler
+  ansible.builtin.pip:
+    name: firewall==0.2.0
+
+- name: Open rustdesk ports on a redhat system
+  ansible.posix.firewalld:
+    port: "{{ item }}"
+    permanent: true
+    zone: public
+    immediate: true
+    state: enabled
+  become: true
+  loop:
+    - "{{ rustdesk_server_container_setup_hbbs_port_nattype }}/tcp"
+    - "{{ rustdesk_server_container_setup_hbbs_port_holepunch_conn }}/tcp"
+    - "{{ rustdesk_server_container_setup_hbbs_port_id_heartbeat }}/udp"
+    - "{{ rustdesk_server_container_setup_hbbs_port_webclient }}/tcp"
+    - "{{ rustdesk_server_container_setup_hbbr_port_relay }}/tcp"
+    - "{{ rustdesk_server_container_setup_hbbr_port_webclient }}/tcp"
+...

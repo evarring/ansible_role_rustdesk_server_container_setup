@@ -1,0 +1,43 @@
+---
+# https://github.com/ansible-community/molecule-plugins/blob/main/src/molecule_plugins/vagrant/driver.py
+
+dependency:
+  name: galaxy
+
+driver:
+  name: vagrant
+  provider:
+    name: virtualbox
+
+platforms:
+  - name: ubuntu
+    box: alvistack/ubuntu-24.04
+    pre_built_image: false
+    instance_raw_config_args:
+      - "vm.network 'forwarded_port', guest: 21115, host: 21115"
+      - "vm.network 'forwarded_port', guest: 21116, host: 21116"
+      - "vm.network 'forwarded_port', guest: 21117, host: 21117"
+      - "vm.network 'forwarded_port', guest: 21118, host: 21118"
+      - "vm.network 'forwarded_port', guest: 21119, host: 21119"
+      - "vbguest.auto_update = false"
+    memory: 1024
+    cpus: 1
+  - name: almalinux
+    box: almalinux/10
+    pre_built_image: false
+    instance_raw_config_args:
+      - "vm.network 'forwarded_port', guest: 21115, host: 31115"
+      - "vm.network 'forwarded_port', guest: 21116, host: 31116"
+      - "vm.network 'forwarded_port', guest: 21117, host: 31117"
+      - "vm.network 'forwarded_port', guest: 21118, host: 31118"
+      - "vm.network 'forwarded_port', guest: 21119, host: 31119"
+      - "vbguest.auto_update = false"
+    memory: 1024
+    cpus: 1
+
+provisioner:
+  name: ansible
+
+verifier:
+  name: ansible
+

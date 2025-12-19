@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: MIT-0
+---
+# vars file for ansible-role-rustdesk-server-container
+
+rustdesk_server_container_setup_server_ip: "127.0.0.1"
+
+rustdesk_server_container_setup_hbbs_port_nattype: "21115" # used for the NAT type test (TCP)
+rustdesk_server_container_setup_hbbs_port_holepunch_conn: "21116" # used for TCP hole punching and connection service (TCP)
+rustdesk_server_container_setup_hbbs_port_id_heartbeat: "21116" # port used for the ID registration and heartbeat service (UDP)
+rustdesk_server_container_setup_hbbs_port_webclient: "21118" # used to support web clients (TCP)
+rustdesk_server_container_setup_hbbr_port_relay: "21117" # used for the Relay services (TCP)
+rustdesk_server_container_setup_hbbr_port_webclient: "21119" # used to support web clients (TCP)

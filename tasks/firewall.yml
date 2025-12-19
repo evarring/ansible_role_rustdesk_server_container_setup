@@ -1,0 +1,44 @@
+---
+- name: Install firewalld on RedHat
+  when: ansible_facts['os_family'] == "RedHat"
+  become: true
+  block:
+    - name: Install firewalld if not installed already
+      ansible.builtin.package:
+        name: firewalld
+
+    - name: Enable and start firewalld
+      ansible.builtin.systemd:
+        name: firewalld
+        state: started
+        enabled: true
+
+    - name: Ensure ssh service is allowed through the firewall
+      ansible.posix.firewalld:
+        service: ssh
+        permanent: true
+        immediate: true
+        state: enabled
+
+- name: Install ufw firewall on Debian
+  when: ansible_facts['os_family'] == "Debian"
+  become: true
+  block:
+    - name: Install ufw if not installed already
+      ansible.builtin.package:
+        name: ufw
+        state: present
+
+    - name: Ensure ufw is enabled and started
+      ansible.builtin.systemd:
+        name: ufw
+        state: started
+        enabled: true
+
+    - name: Ensure ssh service is allowed through the firewall
+      community.general.ufw:
+        rule: allow
+        port: '22'
+        proto: tcp
+        state: enabled
+...

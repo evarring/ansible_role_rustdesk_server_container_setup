@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: MIT-0
+---
+# defaults file for rustdesk_server_container_setup
+
+rustdesk_server_container_setup_folder: /srv/rustdesk
+rustdesk_server_container_setup_server_image: docker.io/rustdesk/rustdesk-server:1.1.14
+
+rustdesk_server_container_setup_firewall_install: true # set to false if you do not want to install the firewall and open the ports

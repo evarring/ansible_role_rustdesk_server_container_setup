@@ -1,0 +1,75 @@
+---
+- name: Check if private key already exists
+  ansible.builtin.stat:
+    path: "{{ rustdesk_server_container_setup_folder }}/id_ed25519"
+  register: rustdesk_server_container_setup_key
+
+- name: Create temporary hbbs container to generate ssh keypair
+  community.docker.docker_container:
+    name: hbbs
+    image: "{{ rustdesk_server_container_setup_server_image }}"
+    state: started
+    privileged: true
+    volumes:
+      - "{{ rustdesk_server_container_setup_folder }}:/root"
+    command: "hbbs -r {{ rustdesk_server_container_setup_server_ip }}:{{ rustdesk_server_container_setup_hbbr_port_relay }}"
+  become: true
+  when: not rustdesk_server_container_setup_key.stat.exists
+
+- name: Pause for 5 seconds for the ssh key to be generated
+  ansible.builtin.pause:
+    seconds: 5
+  when: not rustdesk_server_container_setup_key.stat.exists
+
+- name: Remove temporary hbbs container
+  community.docker.docker_container:
+    name: hbbs
+    state: absent
+    force_kill: true
+  become: true
+  when: not rustdesk_server_container_setup_key.stat.exists
+
+- name: Fetch the generated ssh private key
+  ansible.builtin.slurp:
+    src: "{{ rustdesk_server_container_setup_folder }}/id_ed25519"
+  register: rustdesk_server_container_setup_private_key
+
+- name: Print the generated ssh private key
+  ansible.builtin.debug:
+    msg: "The generated ssh private key is: {{ rustdesk_server_container_setup_private_key['content'] | b64decode }}"
+
+- name: Run hbbs container
+  community.docker.docker_container:
+    name: hbbs
+    image: "{{ rustdesk_server_container_setup_server_image }}"
+    restart_policy: always
+    state: started
+    privileged: true
+    ports:
+      - "{{ rustdesk_server_container_setup_hbbs_port_nattype }}:21115"
+      - "{{ rustdesk_server_container_setup_hbbs_port_holepunch_conn }}:21116"
+      - "{{ rustdesk_server_container_setup_hbbs_port_id_heartbeat }}:21116/udp"
+      - "{{ rustdesk_server_container_setup_hbbs_port_webclient }}:21118"
+    volumes:
+      - "{{ rustdesk_server_container_setup_folder }}:/root"
+    command: >
+      hbbs
+      -r {{ rustdesk_server_container_setup_server_ip }}:{{ rustdesk_server_container_setup_hbbr_port_relay }}
+      -k {{ rustdesk_server_container_setup_private_key['content'] | b64decode }}
+  become: true
+
+- name: Run hbbr container
+  community.docker.docker_container:
+    name: hbbr
+    image: "{{ rustdesk_server_container_setup_server_image }}"
+    restart_policy: always
+    state: started
+    privileged: true
+    ports:
+      - "{{ rustdesk_server_container_setup_hbbr_port_relay }}:21117"
+      - "{{ rustdesk_server_container_setup_hbbr_port_webclient }}:21119"
+    volumes:
+      - "{{ rustdesk_server_container_setup_folder }}:/root"
+    command: "hbbr"
+  become: true
+...

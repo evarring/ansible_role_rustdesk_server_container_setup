@@ -1,0 +1,111 @@
+---
+- name: Allow rootless containers to bind ports
+  ansible.posix.sysctl:
+    name: "net.ipv4.ip_unprivileged_port_start"
+    value: "{{ rustdesk_server_container_setup_hbbs_port_nattype }}"
+    sysctl_set: true
+    reload: true
+  become: true
+
+- name: Check if private key already exists
+  ansible.builtin.stat:
+    path: "{{ rustdesk_server_container_setup_folder }}/id_ed25519"
+  register: rustdesk_server_container_setup_key
+
+- name: Create temporary hbbs container to generate ssh keypair
+  containers.podman.podman_container:
+    name: hbbs
+    image: "{{ rustdesk_server_container_setup_server_image }}"
+    state: started
+    restart_policy: on-failure:5
+    volumes:
+      - "{{ rustdesk_server_container_setup_folder }}:/root:z"
+    command: "hbbs -r {{ rustdesk_server_container_setup_server_ip }}:{{ rustdesk_server_container_setup_hbbr_port_relay }}"
+  when: not rustdesk_server_container_setup_key.stat.exists
+
+- name: Pause for 5 seconds for the ssh key to be generated
+  ansible.builtin.pause:
+    seconds: 5
+  when: not rustdesk_server_container_setup_key.stat.exists
+
+- name: Remove container
+  containers.podman.podman_container:
+    name: hbbs
+    state: absent
+  when: not rustdesk_server_container_setup_key.stat.exists
+
+- name: Fetch the generated ssh private key
+  ansible.builtin.slurp:
+    src: "{{ rustdesk_server_container_setup_folder }}/id_ed25519"
+  register: rustdesk_server_container_setup_private_key
+
+- name: Print the generated ssh private key
+  ansible.builtin.debug:
+    msg: "The generated ssh private key is: {{ rustdesk_server_container_setup_private_key['content'] | b64decode }}"
+
+- name: Recreate hbbs container and create rootless systemd
+  containers.podman.podman_container:
+    name: hbbs
+    image: "{{ rustdesk_server_container_setup_server_image }}"
+    generate_systemd:
+      container_prefix: ""
+      path: "{{ ansible_user_dir }}/.config/systemd/user"
+    ports:
+      - "{{ rustdesk_server_container_setup_hbbs_port_nattype }}:21115"
+      - "{{ rustdesk_server_container_setup_hbbs_port_holepunch_conn }}:21116"
+      - "{{ rustdesk_server_container_setup_hbbs_port_id_heartbeat }}:21116/udp"
+      - "{{ rustdesk_server_container_setup_hbbs_port_webclient }}:21118"
+    state: created
+    restart_policy: on-failure:5
+    volumes:
+      - "{{ rustdesk_server_container_setup_folder }}:/root:z"
+    command: >
+      hbbs
+      -r {{ rustdesk_server_container_setup_server_ip }}:{{ rustdesk_server_container_setup_hbbr_port_relay }}
+      -k {{ rustdesk_server_container_setup_private_key['content'] | b64decode }}
+
+- name: Create hbbr container and create rootless systemd
+  containers.podman.podman_container:
+    name: hbbr
+    image: "{{ rustdesk_server_container_setup_server_image }}"
+    generate_systemd:
+      container_prefix: ""
+      path: "{{ ansible_user_dir }}/.config/systemd/user"
+    ports:
+      - "{{ rustdesk_server_container_setup_hbbr_port_relay }}:21117"
+      - "{{ rustdesk_server_container_setup_hbbr_port_webclient }}:21119"
+    state: created
+    restart_policy: on-failure:5
+    volumes:
+      - "{{ rustdesk_server_container_setup_folder }}:/root:z"
+    command: "hbbr"
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+    scope: user
+
+- name: Enable linger for user {{ ansible_user | default('root') }}
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/loginctl
+      - enable-linger
+      - "{{ ansible_user | default('root') }}"
+    creates: "/var/lib/systemd/linger/{{ ansible_user | default('root') }}"
+  become: true
+  when: ansible_virtualization_type != "container"
+
+- name: Start hbbs
+  ansible.builtin.systemd_service:
+    name: hbbs.service
+    state: started
+    scope: user
+    enabled: true
+
+- name: Start hbbr
+  ansible.builtin.systemd_service:
+    name: hbbr.service
+    state: started
+    scope: user
+    enabled: true
+...

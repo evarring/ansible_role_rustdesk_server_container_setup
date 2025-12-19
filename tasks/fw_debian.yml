@@ -1,0 +1,30 @@
+---
+- name: Set up ufw firewall on Debian
+  become: true
+  block:
+    - name: Install firewall on debian where pip packages are handled by apt
+      ansible.builtin.package:
+        name:
+          - python3-firewall
+        state: present
+
+    - name: Ensure ufw is enabled and rustdesk tcp ports are allowed
+      community.general.ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+        state: enabled
+      loop:
+        - "{{ rustdesk_server_container_setup_hbbs_port_nattype }}"
+        - "{{ rustdesk_server_container_setup_hbbs_port_holepunch_conn }}"
+        - "{{ rustdesk_server_container_setup_hbbs_port_webclient }}"
+        - "{{ rustdesk_server_container_setup_hbbr_port_relay }}"
+        - "{{ rustdesk_server_container_setup_hbbr_port_webclient }}"
+
+    - name: Ensure ufw is enabled and rustdesk udp port is allowed
+      community.general.ufw:
+        rule: allow
+        port: "{{ rustdesk_server_container_setup_hbbs_port_id_heartbeat }}"
+        proto: udp
+        state: enabled
+...
