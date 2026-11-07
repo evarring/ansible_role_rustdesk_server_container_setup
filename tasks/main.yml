@@ -60,4 +60,5 @@
 - name: Print the generated ssh public key
   ansible.builtin.debug:
     msg: "The generated ssh public key is: {{ rustdesk_server_container_setup_public_key['content'] | b64decode }}"
+    verbosity: 1
 ...
